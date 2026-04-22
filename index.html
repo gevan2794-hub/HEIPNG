@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEIPNG</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: #313338;
+      color: #dbdee1;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    /* ── Titlebar row: drag area + window controls side by side ── */
+    .titlebar {
+      display: flex;
+      flex-shrink: 0;
+      height: 38px;
+    }
+
+    .titlebar-drag {
+      flex: 1;
+      -webkit-app-region: drag;
+      display: flex;
+      align-items: center;
+      padding-left: 16px;
+      gap: 10px;
+    }
+
+    .header-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+    }
+
+    .titlebar-drag h1 {
+      font-size: 14px;
+      font-weight: 800;
+      color: #f2f3f5;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .titlebar-drag h1 .arrow {
+      color: #5865f2;
+      margin: 0 2px;
+    }
+
+    /* ── Window controls (NO drag region, NO overlap) ── */
+    .window-controls {
+      display: flex;
+    }
+
+    .window-btn {
+      width: 46px;
+      height: 38px;
+      border: none;
+      background: transparent;
+      color: #6d6f78;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s, color 0.1s;
+    }
+
+    .window-btn:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: #dbdee1;
+    }
+
+    .window-btn.close:hover {
+      background: #da373c;
+      color: #fff;
+    }
+
+    .window-btn svg {
+      width: 10px;
+      height: 10px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      fill: none;
+      pointer-events: none;
+    }
+
+    /* ── Main container ── */
+    .container {
+      flex: 1;
+      padding: 0 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow: hidden;
+    }
+
+    /* ── Controls row ── */
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: end;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .control-group label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #949ba4;
+      font-weight: 700;
+    }
+
+    .format-toggle {
+      display: flex;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #1e1f22;
+    }
+
+    .format-toggle button {
+      padding: 7px 18px;
+      border: none;
+      background: transparent;
+      color: #949ba4;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .format-toggle button:hover {
+      color: #dbdee1;
+    }
+
+    .format-toggle button.active {
+      background: #404249;
+      color: #f2f3f5;
+    }
+
+    .quality-slider {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quality-slider input[type="range"] {
+      width: 100px;
+      accent-color: #5865f2;
+      height: 4px;
+    }
+
+    .quality-slider span {
+      font-size: 13px;
+      color: #949ba4;
+      min-width: 32px;
+    }
+
+    /* ── Output folder ── */
+    .output-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .output-path {
+      flex: 1;
+      padding: 7px 12px;
+      background: #1e1f22;
+      border: none;
+      border-radius: 4px;
+      color: #dbdee1;
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .output-path.empty {
+      color: #6d6f78;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 7px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.12s;
+      white-space: nowrap;
+    }
+
+    .btn-secondary {
+      background: #404249;
+      color: #dbdee1;
+    }
+
+    .btn-secondary:hover {
+      background: #4e505a;
+    }
+
+    .btn-primary {
+      background: #5865f2;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #4752c4;
+    }
+
+    .btn-primary:disabled {
+      background: #404249;
+      color: #6d6f78;
+      cursor: not-allowed;
+    }
+
+    /* ── Drop zone / file list ── */
+    .drop-zone {
+      flex: 1;
+      border: 2px dashed #3f4147;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 140px;
+      transition: border-color 0.15s, background 0.15s;
+      overflow: hidden;
+      background: #2b2d31;
+    }
+
+    .drop-zone.has-files {
+      align-items: stretch;
+      justify-content: flex-start;
+      padding: 0;
+    }
+
+    .drop-zone.dragover {
+      border-color: #5865f2;
+      background: rgba(88, 101, 242, 0.06);
+    }
+
+    .drop-placeholder {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .drop-placeholder .icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+      opacity: 0.3;
+    }
+
+    .drop-placeholder p {
+      color: #6d6f78;
+      font-size: 14px;
+    }
+
+    .drop-placeholder .browse-link {
+      color: #5865f2;
+      cursor: pointer;
+    }
+
+    .drop-placeholder .browse-link:hover {
+      text-decoration: underline;
+    }
+
+    /* ── File list ── */
+    .file-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+    }
+
+    .file-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .file-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .file-list::-webkit-scrollbar-thumb {
+      background: #1e1f22;
+      border-radius: 3px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+      transition: background 0.1s;
+    }
+
+    .file-item:hover {
+      background: #35373c;
+    }
+
+    .file-item .name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #dbdee1;
+    }
+
+    .file-item .status {
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .file-item .status.pending { color: #6d6f78; }
+    .file-item .status.converting { color: #faa61a; }
+    .file-item .status.done { color: #57f287; }
+    .file-item .status.error { color: #ed4245; }
+
+    .file-item .remove-btn {
+      background: none;
+      border: none;
+      color: #6d6f78;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 4px;
+      line-height: 1;
+    }
+
+    .file-item .remove-btn:hover {
+      color: #ed4245;
+    }
+
+    /* ── Bottom bar ── */
+    .bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .file-count {
+      font-size: 12px;
+      color: #6d6f78;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ── Progress bar ── */
+    .progress-container {
+      display: none;
+      width: 100%;
+    }
+
+    .progress-container.visible {
+      display: block;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 4px;
+      background: #1e1f22;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: #5865f2;
+      border-radius: 2px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .progress-text {
+      font-size: 12px;
+      color: #949ba4;
+      margin-top: 5px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="titlebar">
+    <div class="titlebar-drag">
+      <img class="header-icon" src="icon.png" alt="">
+      <h1>HEIC <span class="arrow">&rarr;</span> PNG</h1>
+    </div>
+    <div class="window-controls">
+      <button class="window-btn" id="btn-minimize">
+        <svg viewBox="0 0 10 10"><line x1="0" y1="5" x2="10" y2="5"/></svg>
+      </button>
+      <button class="window-btn" id="btn-maximize">
+        <svg viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" rx="1"/></svg>
+      </button>
+      <button class="window-btn close" id="btn-close">
+        <svg viewBox="0 0 10 10"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Controls -->
+    <div class="controls">
+      <div class="control-group">
+        <label>Format</label>
+        <div class="format-toggle">
+          <button class="active" data-format="jpg">JPG</button>
+          <button data-format="png">PNG</button>
+        </div>
+      </div>
+
+      <div class="control-group quality-group">
+        <label>Quality</label>
+        <div class="quality-slider">
+          <input type="range" id="quality" min="10" max="100" value="90" step="5">
+          <span id="quality-val">90%</span>
+        </div>
+      </div>
+
+      <div class="control-group" style="flex:1">
+        <label>Output Folder</label>
+        <div class="output-row">
+          <div class="output-path empty" id="output-path">No folder selected</div>
+          <button class="btn btn-secondary" id="btn-folder">Browse</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drop zone / file list -->
+    <div class="drop-zone" id="drop-zone">
+      <div class="drop-placeholder" id="placeholder">
+        <div class="icon">+</div>
+        <p>Drag & drop HEIC files here</p>
+        <p>or <span class="browse-link" id="browse-link">browse files</span></p>
+      </div>
+      <div class="file-list" id="file-list" style="display:none"></div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-container" id="progress-container">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-text" id="progress-text"></div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="bottom-bar">
+      <span class="file-count" id="file-count"></span>
+      <div class="actions">
+        <button class="btn btn-secondary" id="btn-clear" style="display:none">Clear All</button>
+        <button class="btn btn-primary" id="btn-convert" disabled>Convert</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Window controls
+    document.getElementById('btn-minimize').addEventListener('click', () => window.api.windowMinimize());
+    document.getElementById('btn-maximize').addEventListener('click', () => window.api.windowMaximize());
+    document.getElementById('btn-close').addEventListener('click', () => window.api.windowClose());
+
+    const state = {
+      files: [],
+      format: 'jpg',
+      quality: 90,
+      outputDir: null,
+      converting: false,
+    };
+
+    // DOM refs
+    const dropZone = document.getElementById('drop-zone');
+    const placeholder = document.getElementById('placeholder');
+    const fileList = document.getElementById('file-list');
+    const btnConvert = document.getElementById('btn-convert');
+    const btnClear = document.getElementById('btn-clear');
+    const btnFolder = document.getElementById('btn-folder');
+    const browseLink = document.getElementById('browse-link');
+    const outputPathEl = document.getElementById('output-path');
+    const qualityInput = document.getElementById('quality');
+    const qualityVal = document.getElementById('quality-val');
+    const fileCount = document.getElementById('file-count');
+    const progressContainer = document.getElementById('progress-container');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+    const qualityGroup = document.querySelector('.quality-group');
+
+    // Format toggle
+    document.querySelectorAll('.format-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (state.converting) return;
+        document.querySelector('.format-toggle .active').classList.remove('active');
+        btn.classList.add('active');
+        state.format = btn.dataset.format;
+        qualityGroup.style.display = state.format === 'png' ? 'none' : '';
+      });
+    });
+
+    // Quality slider
+    qualityInput.addEventListener('input', () => {
+      state.quality = parseInt(qualityInput.value);
+      qualityVal.textContent = state.quality + '%';
+    });
+
+    // Output folder
+    btnFolder.addEventListener('click', async () => {
+      const folder = await window.api.selectOutputFolder();
+      if (folder) {
+        state.outputDir = folder;
+        outputPathEl.textContent = folder;
+        outputPathEl.classList.remove('empty');
+        updateUI();
+      }
+    });
+
+    // Browse files
+    browseLink.addEventListener('click', addFiles);
+    async function addFiles() {
+      if (state.converting) return;
+      const paths = await window.api.selectFiles();
+      addFilePaths(paths);
+    }
+
+    function addFilePaths(paths) {
+      const existing = new Set(state.files.map(f => f.path));
+      for (const p of paths) {
+        if (!existing.has(p)) {
+          const name = p.split(/[\\/]/).pop();
+          state.files.push({ path: p, name, status: 'pending' });
+        }
+      }
+      renderFiles();
+      updateUI();
+    }
+
+    // Drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (state.converting) return;
+      const paths = [];
+      for (const file of e.dataTransfer.files) {
+        if (/\.heic$/i.test(file.name) || /\.heif$/i.test(file.name)) {
+          paths.push(file.path);
+        }
+      }
+      addFilePaths(paths);
+    });
+
+    // Clear
+    btnClear.addEventListener('click', () => {
+      if (state.converting) return;
+      state.files = [];
+      renderFiles();
+      updateUI();
+    });
+
+    // Render file list
+    function renderFiles() {
+      if (state.files.length === 0) {
+        placeholder.style.display = '';
+        fileList.style.display = 'none';
+        dropZone.classList.remove('has-files');
+        return;
+      }
+
+      placeholder.style.display = 'none';
+      fileList.style.display = '';
+      dropZone.classList.add('has-files');
+
+      fileList.innerHTML = state.files.map((f, i) => {
+        let statusLabel = '';
+        if (f.status === 'pending') statusLabel = 'Pending';
+        else if (f.status === 'converting') statusLabel = 'Converting...';
+        else if (f.status === 'done') statusLabel = 'Done';
+        else if (f.status === 'error') statusLabel = f.error || 'Error';
+
+        return `
+          <div class="file-item">
+            <span class="name" title="${f.path}">${f.name}</span>
+            <span class="status ${f.status}">${statusLabel}</span>
+            ${!state.converting ? `<button class="remove-btn" data-index="${i}">&times;</button>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      fileList.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.files.splice(parseInt(btn.dataset.index), 1);
+          renderFiles();
+          updateUI();
+        });
+      });
+    }
+
+    function updateUI() {
+      const pending = state.files.filter(f => f.status === 'pending').length;
+      const total = state.files.length;
+      fileCount.textContent = total > 0 ? `${total} file${total !== 1 ? 's' : ''}` : '';
+      btnClear.style.display = total > 0 && !state.converting ? '' : 'none';
+      btnConvert.disabled = pending === 0 || !state.outputDir || state.converting;
+      btnConvert.textContent = state.converting ? 'Converting...' : 'Convert';
+    }
+
+    // Convert
+    btnConvert.addEventListener('click', async () => {
+      if (state.converting || !state.outputDir) return;
+      state.converting = true;
+      updateUI();
+
+      const pending = state.files.filter(f => f.status === 'pending');
+      const total = pending.length;
+      let done = 0;
+
+      progressContainer.classList.add('visible');
+      progressFill.style.width = '0%';
+      progressText.textContent = `0 / ${total}`;
+
+      for (const file of pending) {
+        file.status = 'converting';
+        renderFiles();
+
+        const result = await window.api.convertFile({
+          filePath: file.path,
+          outputDir: state.outputDir,
+          format: state.format,
+          quality: state.quality,
+        });
+
+        if (result.success) {
+          file.status = 'done';
+        } else {
+          file.status = 'error';
+          file.error = result.error;
+        }
+
+        done++;
+        const pct = Math.round((done / total) * 100);
+        progressFill.style.width = pct + '%';
+        progressText.textContent = `${done} / ${total}`;
+        renderFiles();
+      }
+
+      state.converting = false;
+      const errors = pending.filter(f => f.status === 'error').length;
+      progressText.textContent = errors > 0
+        ? `Done \u2014 ${done - errors} converted, ${errors} failed`
+        : `Done \u2014 ${done} file${done !== 1 ? 's' : ''} converted`;
+      updateUI();
+    });
+  </script>
+</body>
+</html>

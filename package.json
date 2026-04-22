@@ -1,0 +1,40 @@
+{
+  "name": "heipng",
+  "version": "1.0.0",
+  "description": "Bulk HEIC to JPG/PNG converter",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^41.2.2",
+    "electron-builder": "^26.8.1",
+    "png-to-ico": "^3.0.1"
+  },
+  "dependencies": {
+    "heic-convert": "^2.1.0",
+    "sharp": "^0.34.5"
+  },
+  "build": {
+    "appId": "com.heipng.app",
+    "productName": "HEIPNG",
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "icon.png",
+      "icon.ico"
+    ]
+  }
+}
