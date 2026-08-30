@@ -19,7 +19,9 @@
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)] [string] $GamePath,
+    # Game folder. Omit it and Steam's own library index is searched for a CarX install.
+    [string] $GamePath,
+
     [string] $SimHubPath = 'C:\Program Files (x86)\SimHub',
     [switch] $SkipBepInEx,
     [switch] $SkipSimHub
@@ -32,6 +34,84 @@ function Write-Step  ($m) { Write-Host "`n==> $m" -ForegroundColor Cyan }
 function Write-Ok    ($m) { Write-Host "    $m" -ForegroundColor Green }
 function Write-Warn2 ($m) { Write-Host "    $m" -ForegroundColor Yellow }
 function Write-Ask   ($m) { Write-Host "    $m" -ForegroundColor Magenta }
+
+
+# --- 0. Find the game --------------------------------------------------------------
+#
+# Steam records every library folder in steamapps\libraryfolders.vdf, including ones on
+# other drives, so this finds the game wherever it was installed rather than assuming C:.
+
+function Find-CarXInstall {
+    $steamRoots = @(
+        "${env:ProgramFiles(x86)}\Steam",
+        "$env:ProgramFiles\Steam",
+        "$env:SystemDrive\Steam"
+    ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
+
+    try {
+        $registered = (Get-ItemProperty -Path 'HKCU:\Software\Valve\Steam' -Name SteamPath -ErrorAction Stop).SteamPath
+        if ($registered) { $steamRoots = @($registered.Replace('/', '\')) + $steamRoots }
+    }
+    catch {
+        # No Steam registry key: fall back to the well-known locations above.
+    }
+
+    $libraries = New-Object System.Collections.Generic.List[string]
+
+    foreach ($steam in ($steamRoots | Select-Object -Unique)) {
+        $libraries.Add((Join-Path $steam 'steamapps\common'))
+
+        $vdf = Join-Path $steam 'steamapps\libraryfolders.vdf'
+        if (-not (Test-Path -LiteralPath $vdf)) { continue }
+
+        # Entries look like:   "path"   "D:\\SteamLibrary"
+        $text = Get-Content -LiteralPath $vdf -Raw
+        foreach ($match in [regex]::Matches($text, '"path"\s*"([^"]+)"')) {
+            $libraries.Add((Join-Path $match.Groups[1].Value.Replace('\\', '\') 'steamapps\common'))
+        }
+    }
+
+    $found = foreach ($library in ($libraries | Select-Object -Unique)) {
+        if (-not (Test-Path -LiteralPath $library)) { continue }
+        Get-ChildItem -LiteralPath $library -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '(?i)carx' }
+    }
+
+    # Prefer the newest title when several CarX games are installed.
+    $found | Sort-Object Name -Descending | Select-Object -ExpandProperty FullName -Unique
+}
+
+if (-not $GamePath) {
+    Write-Step "looking for a CarX install"
+    $candidates = @(Find-CarXInstall)
+
+    if ($candidates.Count -eq 0) {
+        Write-Warn2 "No CarX install found in your Steam libraries."
+        Write-Warn2 "Pass the folder containing the game's .exe yourself:"
+        Write-Warn2 "  .\setup.ps1 -GamePath 'D:\Games\CarX Drift Racing Online 2'"
+        throw "could not locate the game"
+    }
+
+    if ($candidates.Count -eq 1) {
+        $GamePath = $candidates[0]
+        Write-Ok "found $GamePath"
+    }
+    else {
+        Write-Host ""
+        Write-Ask "Several CarX games are installed. Which one?"
+        for ($i = 0; $i -lt $candidates.Count; $i++) {
+            Write-Host ("      [{0}] {1}" -f ($i + 1), $candidates[$i])
+        }
+        Write-Host ""
+        $choice = Read-Host "    number"
+        $index = 0
+        if (-not [int]::TryParse($choice, [ref] $index) -or $index -lt 1 -or $index -gt $candidates.Count) {
+            throw "'$choice' is not one of the listed numbers"
+        }
+        $GamePath = $candidates[$index - 1]
+        Write-Ok "using $GamePath"
+    }
+}
 
 if (-not (Test-Path -LiteralPath $GamePath)) { throw "game path not found: $GamePath" }
 

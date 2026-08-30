@@ -29,6 +29,26 @@ step "logic tests"
 dotnet run --project tests/CarX.Telemetry.Tests -c Release --no-build 2>/dev/null \
   || dotnet run --project tests/CarX.Telemetry.Tests -c Release
 
+step "PowerShell syntax"
+if command -v pwsh >/dev/null 2>&1; then
+  pwsh -NoProfile -Command '
+    $bad = 0
+    foreach ($f in @("setup.ps1","build.ps1","install.ps1")) {
+      $errors = $null
+      [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f).Path, [ref]$null, [ref]$errors) | Out-Null
+      if ($errors -and $errors.Count) {
+        $bad++
+        Write-Host "   FAIL $f"
+        $errors | ForEach-Object { Write-Host ("        line {0}: {1}" -f $_.Extent.StartLineNumber, $_.Message) }
+      } else {
+        Write-Host "   ok   $f parses"
+      }
+    }
+    exit $bad'
+else
+  echo "   skip (pwsh not installed: dotnet tool install --global PowerShell --version 7.4.6)"
+fi
+
 step "wire protocol round trip"
 python3 - <<'PY'
 import json, socket, subprocess, sys, time

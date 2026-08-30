@@ -1,7 +1,7 @@
 # Setup
 
-> **Shortcut:** on the PC with the game, `.\setup.ps1 -GamePath "<game folder>"` does
-> steps 1–4 below in one command — BepInEx download and install, build, and deploy.
+> **Shortcut:** on the PC with the game, `.\setup.ps1` does steps 1–4 below in one
+> command, finding the game in your Steam libraries by itself — BepInEx download and install, build, and deploy.
 > This page is the manual version, and the reference for when something goes wrong.
 > Handing the job to a Claude Code session running on that PC? See [HANDOFF.md](HANDOFF.md).
 

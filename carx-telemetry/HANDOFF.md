@@ -10,8 +10,11 @@ On the Windows PC, with the game installed:
 ```powershell
 git clone https://github.com/gevan2794-hub/HEIPNG
 cd HEIPNG\carx-telemetry
-.\setup.ps1 -GamePath "C:\Program Files (x86)\Steam\steamapps\common\CarX Drift Racing Online 2"
+.\setup.ps1
 ```
+
+It finds the game in your Steam libraries by itself. If it cannot (non-Steam install,
+an unusual location), pass the folder: `.\setup.ps1 -GamePath "<folder with the .exe>"`.
 
 `setup.ps1` detects IL2CPP vs Mono, downloads the matching BepInEx release, installs it,
 builds the mod and the SimHub plugin against the real libraries, and copies everything
