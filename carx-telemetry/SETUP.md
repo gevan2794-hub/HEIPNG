@@ -72,11 +72,18 @@ Install the [.NET SDK](https://dotnet.microsoft.com/download), then from this fo
 It detects IL2CPP vs Mono from the game folder, builds the right flavour, and stages
 everything into `dist\`.
 
-> **This code has never been compiled** — no .NET SDK, BepInEx or SimHub assemblies were
-> available where it was written. The first build will probably throw errors, most likely
-> in the SimHub plugin, whose API is undocumented and learned by decompiling
-> `SimHub.Plugins.dll`. That is expected. Paste the errors back and they get fixed; do not
-> assume the whole approach is wrong because the first `dotnet build` is red.
+> **This compiles, but against reference stubs** — BepInEx's NuGet feed and SimHub's
+> assemblies were both unreachable where this was written, so the API surfaces were
+> stubbed to type-check the code. Everything builds clean that way, and 102 logic tests
+> pass over the JSON codec, path resolver and profile parser.
+>
+> Your build is the first one against the *real* libraries. The likely failure point is
+> the SimHub plugin: SimHub publishes no plugin documentation, so its signatures here are
+> written from the shapes that SDK is known to use, and a method name could be wrong.
+> That is a small fix, not a broken approach — paste the errors back.
+>
+> If you want to see the pre-flight checks for yourself first, `./verify.sh` (bash) runs
+> the whole stub build and test suite in about 20 seconds.
 
 If you only want the game side for now (using UDPConnector on the SimHub end):
 

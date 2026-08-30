@@ -33,20 +33,40 @@
     <DefineConstants>$(DefineConstants);IL2CPP</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(UseStubs)' == 'true'">
+    <DefineConstants>$(DefineConstants);STUB_BUILD</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\CarX.Telemetry.Shared\CarX.Telemetry.Shared.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(GameFlavor)' == 'Mono'">
-    <PackageReference Include="BepInEx.Core" Version="5.*" IncludeAssets="compile" />
-    <!-- Pin close to the game's engine version. UnityEngine.Modules only affects
-         compilation; the game supplies the real assemblies at runtime. -->
-    <PackageReference Include="UnityEngine.Modules" Version="2019.4.31" IncludeAssets="compile" />
+  <!-- UnityEngine.Modules affects compilation only; the game supplies the real
+       assemblies at runtime, so the exact version does not need to match the game.
+       2021.3.33 is the only version published on nuget.org. -->
+  <ItemGroup>
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" IncludeAssets="compile" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(GameFlavor)' == 'IL2CPP'">
+  <!-- BepInEx lives on its own NuGet feed (https://nuget.bepinex.dev/v3/index.json),
+       which NuGet.config adds. Where that feed is unreachable - CI, a locked-down
+       container - '-p:UseStubs=true' compiles against the reference stubs in
+       build/stubs instead. That type-checks this code but produces a DLL that cannot
+       run; see build/stubs/README.md. -->
+  <ItemGroup Condition="'$(GameFlavor)' == 'Mono' and '$(UseStubs)' != 'true'">
+    <PackageReference Include="BepInEx.Core" Version="5.*" IncludeAssets="compile" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(GameFlavor)' == 'IL2CPP' and '$(UseStubs)' != 'true'">
     <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-*" IncludeAssets="compile" />
-    <PackageReference Include="UnityEngine.Modules" Version="2022.3.21" IncludeAssets="compile" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(GameFlavor)' == 'Mono' and '$(UseStubs)' == 'true'">
+    <ProjectReference Include="..\..\build\stubs\BepInEx.Core\BepInEx.Core.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(GameFlavor)' == 'IL2CPP' and '$(UseStubs)' == 'true'">
+    <ProjectReference Include="..\..\build\stubs\BepInEx.Unity.IL2CPP\BepInEx.Unity.IL2CPP.csproj" Private="false" />
   </ItemGroup>
 
   <ItemGroup>

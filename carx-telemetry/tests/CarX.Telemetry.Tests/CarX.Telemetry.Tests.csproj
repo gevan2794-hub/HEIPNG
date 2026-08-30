@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Runs the parts of the bridge that have no Unity or BepInEx dependency: the JSON
+    codec, the reflection path resolver, and the profile parser. Those are the pieces
+    most likely to be subtly wrong, and they are all plain .NET, so they can be tested
+    on any machine with no game installed.
+
+        dotnet run -project tests/CarX.Telemetry.Tests -c Release
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>CarX.Telemetry.Tests</RootNamespace>
+    <AssemblyName>CarX.Telemetry.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CarX.Telemetry.Shared\CarX.Telemetry.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Compiled straight from the mod. These two files deliberately touch no Unity API,
+         which is what makes them testable outside the game. -->
+    <Compile Include="..\..\src\CarX.Telemetry.Mod\MemberPath.cs" />
+    <Compile Include="..\..\src\CarX.Telemetry.Mod\GameProfile.cs" />
+  </ItemGroup>
+
+</Project>

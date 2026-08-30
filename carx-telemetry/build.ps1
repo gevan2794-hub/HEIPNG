@@ -94,8 +94,20 @@ New-Item -ItemType Directory -Path $dist -Force | Out-Null
 if (-not $SimHubOnly) {
     Write-Step "building the game mod ($Flavor)"
     $modOut = Join-Path $dist 'mod'
-    dotnet build (Join-Path $root 'src\CarX.Telemetry.Mod') `
-        -c Release -p:GameFlavor=$Flavor -o $modOut
+    $modProject = Join-Path $root 'src\CarX.Telemetry.Mod'
+
+    # BepInEx publishes to its own feed rather than nuget.org, so the mod restores with
+    # an extra config. It is kept out of the default NuGet.config because NuGet contacts
+    # every configured source on every restore, which would break the other projects on
+    # a machine that cannot reach that host.
+    dotnet restore $modProject -p:GameFlavor=$Flavor --configfile (Join-Path $root 'build\nuget.bepinex.config')
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn2 "restore failed. If nuget.bepinex.dev is unreachable, you can type-check"
+        Write-Warn2 "with -p:UseStubs=true, but the result will not run. See build\stubs\README.md."
+        throw "mod restore failed"
+    }
+
+    dotnet build $modProject -c Release -p:GameFlavor=$Flavor -o $modOut --no-restore
     if ($LASTEXITCODE -ne 0) { throw "mod build failed" }
 
     # BepInEx only needs the plugin and its own dependency; the rest is build noise.

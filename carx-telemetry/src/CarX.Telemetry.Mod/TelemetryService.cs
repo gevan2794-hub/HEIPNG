@@ -32,9 +32,16 @@ namespace CarX.Telemetry.Mod
         private readonly HashSet<string> _reportedUnresolved = new HashSet<string>(StringComparer.Ordinal);
         private bool _dumpRequested;
 
-#if IL2CPP
+#if IL2CPP && !STUB_BUILD
         // Il2CppInterop constructs injected MonoBehaviours from the native side and
-        // requires this constructor to exist.
+        // requires these constructors to exist.
+        //
+        // They are excluded from stub builds: under BepInEx 6 the MonoBehaviour these
+        // chain to is Il2CppInterop's, which derives from Il2CppObjectBase and takes an
+        // IntPtr, whereas the stock UnityEngine.Modules package used for type-checking
+        // has only the parameterless one. Modelling that would mean stubbing most of
+        // UnityEngine to verify these two lines, so they are checked by the real IL2CPP
+        // build instead. See build/stubs/README.md.
         public TelemetryService(IntPtr pointer) : base(pointer) { }
 
         public TelemetryService() : base(

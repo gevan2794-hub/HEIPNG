@@ -28,6 +28,15 @@ namespace CarX.Telemetry.Mod
             @"^(?<name>[A-Za-z_][A-Za-z0-9_]*)(?<call>\(\))?(?:\[(?<index>\d+|\*)\])?$",
             RegexOptions.Compiled);
 
+        /// <summary>
+        /// A trailing "* k" or "+ c". Anchored at the end and required to be followed by a
+        /// number, so that the '*' of a <c>[*]</c> wheel wildcard is never mistaken for a
+        /// multiplier.
+        /// </summary>
+        private static readonly Regex SuffixPattern = new Regex(
+            @"\s*(?<op>[*+])\s*(?<value>[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*$",
+            RegexOptions.Compiled);
+
         private readonly List<Step> _steps = new List<Step>();
 
         /// <summary>Type name of the component the chain starts from.</summary>
@@ -54,13 +63,35 @@ namespace CarX.Telemetry.Mod
             if (string.IsNullOrWhiteSpace(raw)) { error = "empty path"; return false; }
 
             var result = new MemberPath { Raw = raw.Trim() };
-            var expression = result.Raw;
 
-            // Trailing "+ c" then "* k", peeled off right to left so the scale binds tighter.
-            expression = PeelSuffix(expression, '+', v => result.Offset = v, ref error);
-            if (error != null) return false;
-            expression = PeelSuffix(expression, '*', v => result.Scale = v, ref error);
-            if (error != null) return false;
+            // Peel a trailing "* k" and "+ c" off, rightmost first, so the scale binds
+            // tighter than the offset in "path * 2 + -40".
+            var expression = result.Raw;
+            var haveScale = false;
+            var haveOffset = false;
+
+            for (var peeled = 0; peeled < 2; peeled++)
+            {
+                var suffix = SuffixPattern.Match(expression);
+                if (!suffix.Success) break;
+
+                var value = double.Parse(suffix.Groups["value"].Value, NumberStyles.Float, CultureInfo.InvariantCulture);
+
+                if (suffix.Groups["op"].Value == "*")
+                {
+                    if (haveScale) { error = "more than one '*' scale"; return false; }
+                    result.Scale = value;
+                    haveScale = true;
+                }
+                else
+                {
+                    if (haveOffset) { error = "more than one '+' offset"; return false; }
+                    result.Offset = value;
+                    haveOffset = true;
+                }
+
+                expression = expression.Substring(0, suffix.Index);
+            }
 
             var segments = expression.Trim().Split('.');
             if (segments.Length < 2)
@@ -104,22 +135,6 @@ namespace CarX.Telemetry.Mod
 
             path = result;
             return true;
-        }
-
-        private static string PeelSuffix(string expression, char op, Action<double> assign, ref string error)
-        {
-            var at = expression.LastIndexOf(op);
-            if (at < 0) return expression;
-
-            var tail = expression.Substring(at + 1).Trim();
-            if (!double.TryParse(tail, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
-            {
-                error = "'" + op + "' must be followed by a number, got '" + tail + "'";
-                return expression;
-            }
-
-            assign(value);
-            return expression.Substring(0, at);
         }
 
         /// <summary>

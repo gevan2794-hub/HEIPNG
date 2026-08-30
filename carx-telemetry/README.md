@@ -8,11 +8,12 @@ specific title. The game-specific part is a **text profile**, not code — so th
 build covers CarX Drift Racing Online 1, and stays useful across the Early Access churn
 in Online 2, where a patch that renames a field costs a text edit instead of a rebuild.
 
-> **Status: unverified against a running game.** The design is complete and the wire
-> protocol is round-trip tested, but this has not been compiled against real BepInEx and
-> SimHub assemblies, and no CarX field names are asserted anywhere — the shipped profiles
-> are templates you fill in with the in-game dump key. Expect to fix compile errors on
-> first build. See [Current state](#current-state).
+> **Status: compiles and its logic is tested; never run inside a game.** All three
+> assemblies build clean, and 102 checks cover the JSON codec, the reflection path
+> resolver and the profile parser. What is untested is everything that needs a running
+> game: the vehicle locator, the physics sampling, and whether the SimHub API signatures
+> are right. No CarX field names are asserted anywhere — the shipped profiles are
+> templates you fill in with the in-game dump key. See [Current state](#current-state).
 
 ## How it works
 
@@ -52,6 +53,9 @@ The split that makes "works for all" possible:
 | `profiles/` | Per-game binding files, seeded into the BepInEx config dir on first run |
 | `SETUP.md` | Step-by-step: what you actually have to do, in order |
 | `build.ps1` / `install.ps1` | Detect the game flavour, build, and copy everything into place |
+| `verify.sh` | Builds everything and runs the tests — no game or SimHub needed |
+| `tests/` | 102 logic checks over the JSON codec, path resolver and profile parser |
+| `build/stubs/` | Reference stubs so the code type-checks without BepInEx or SimHub installed |
 | `tools/fake_game.py` | Sends synthetic telemetry, so the SimHub side can be built without the game |
 | `tools/monitor.py` | Receives and prints frames, to check the mod before SimHub is involved |
 | `PROTOCOL.md` | The wire format and the channel list |
@@ -149,23 +153,35 @@ config if a rig chatters, lower it for a crisper response.
 
 ## Current state
 
-Done and self-consistent:
+Run `./verify.sh` to check all of this yourself. It takes about 20 seconds and needs
+only the .NET SDK and Python — no game, no SimHub, no Windows.
 
-- Wire protocol, round-trip tested with the Python tools (59 channels in a full frame).
-- Reflection path resolver with member/property/method/index/wildcard support and scaling.
-- Profile parser, auto-selection by game, and first-run seeding.
-- Heuristic vehicle locator and the engine-derived physics channels.
-- Both plugin ends, including packet-loss accounting and disconnect handling.
+**Verified:**
 
-Not done:
+- All three assemblies compile clean, in every flavour (Mono, IL2CPP, SimHub), with zero
+  warnings. The BepInEx and SimHub API surfaces are stubbed for this
+  (see [build/stubs](build/stubs/README.md)).
+- 102 logic checks pass over the pieces most likely to be subtly wrong: the JSON codec
+  (round trip, escaping, non-finite values, and 13 malformed inputs that must be rejected
+  without throwing), the reflection path resolver (fields, properties, methods, private
+  members, enums, indices, wildcards, scaling, and every failure mode), and the profile
+  parser (including that a profile full of typos degrades to warnings rather than taking
+  the mod down).
+- The wire protocol round-trips end to end: 60 frames, 59 channels, sequence intact.
 
-- **Never compiled.** No .NET SDK, BepInEx, or SimHub assemblies were available here, so
-  the C# is unbuilt. The SimHub plugin API in particular has no official documentation —
-  people learn it by decompiling `SimHub.Plugins.dll` — so treat those signatures as
-  needing a first-build pass.
+**Not verified — needs a real game:**
+
+- **The vehicle locator and the physics sampling have never run.** They need a live Unity
+  scene. The locator's scoring heuristic in particular is reasoned, not measured.
+- **The SimHub API signatures are stubs I wrote from the shapes that SDK is known to
+  use.** SimHub publishes no plugin documentation, so a green stub build proves this code
+  is internally consistent, not that it matches the real `SimHub.Plugins.dll`. That check
+  happens on your machine, on the first real build.
+- **BepInEx assemblies were never restored** — its NuGet feed was unreachable from where
+  this was written, hence the stubs. `build.ps1` restores from the real feed.
 - **No real CarX field names.** `profiles/dro1.profile` and `profiles/dro2.profile` are
-  templates with their channel lines commented out. Nothing in this repo claims to know
-  what CarX calls its RPM variable; use the F9 dump or a decompiler, per
+  templates with their channel lines commented out. Nothing here claims to know what CarX
+  calls its RPM variable; use the F9 dump or a decompiler, per
   [docs/FINDING-FIELDS.md](docs/FINDING-FIELDS.md).
 - No settings UI on either end (text config files instead), and no lap/sector timing
   channels wired up.

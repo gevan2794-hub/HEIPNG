@@ -22,7 +22,7 @@
     <ProjectReference Include="..\CarX.Telemetry.Shared\CarX.Telemetry.Shared.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(UseStubs)' != 'true'">
     <Reference Include="SimHub.Plugins">
       <HintPath>$(SimHubPath)\SimHub.Plugins.dll</HintPath>
       <Private>false</Private>
@@ -31,6 +31,12 @@
       <HintPath>$(SimHubPath)\GameReaderCommon.dll</HintPath>
       <Private>false</Private>
     </Reference>
+  </ItemGroup>
+
+  <!-- '-p:UseStubs=true' type-checks this project without SimHub installed. The result
+       cannot run; see build/stubs/README.md. -->
+  <ItemGroup Condition="'$(UseStubs)' == 'true'">
+    <ProjectReference Include="..\..\build\stubs\SimHub.Stubs\SimHub.Stubs.csproj" Private="false" />
   </ItemGroup>
 
   <ItemGroup>
