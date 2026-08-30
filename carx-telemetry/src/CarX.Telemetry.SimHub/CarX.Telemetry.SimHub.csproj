@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    SimHub plugins are .NET Framework 4.8 assemblies dropped next to SimHub.exe.
+    SimHub does not publish its assemblies on NuGet, so this references them straight
+    out of the install directory. Override the path if SimHub lives elsewhere:
+
+      dotnet build -c Release -p:SimHubPath="D:\Games\SimHub"
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <AssemblyName>CarX.Telemetry.SimHub</AssemblyName>
+    <RootNamespace>CarX.Telemetry.Receiver</RootNamespace>
+    <Version>0.1.0</Version>
+    <SimHubPath Condition="'$(SimHubPath)' == ''">C:\Program Files (x86)\SimHub</SimHubPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CarX.Telemetry.Shared\CarX.Telemetry.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="SimHub.Plugins">
+      <HintPath>$(SimHubPath)\SimHub.Plugins.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GameReaderCommon">
+      <HintPath>$(SimHubPath)\GameReaderCommon.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lets developers build straight into the SimHub folder for a quick edit/restart loop. -->
+    <None Include="CarXTelemetry.config" Condition="Exists('CarXTelemetry.config')" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

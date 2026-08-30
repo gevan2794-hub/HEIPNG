@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    One source tree, two builds:
+
+      dotnet build -c Release -p:GameFlavor=Mono     (BepInEx 5  - Mono games,   e.g. CarX DRO 1)
+      dotnet build -c Release -p:GameFlavor=IL2CPP   (BepInEx 6  - IL2CPP games, e.g. recent CarX DRO 2)
+
+    Check which one a game needs by looking next to its .exe: a GameAssembly.dll means
+    IL2CPP, a Managed/Assembly-CSharp.dll means Mono.
+  -->
+
+  <PropertyGroup>
+    <GameFlavor Condition="'$(GameFlavor)' == ''">Mono</GameFlavor>
+    <AssemblyName>CarX.Telemetry.Mod</AssemblyName>
+    <RootNamespace>CarX.Telemetry.Mod</RootNamespace>
+    <LangVersion>9.0</LangVersion>
+    <!-- BepInEx does not resolve transitive NuGet dependencies for plugins, so anything
+         we reference has to be either provided by the game or merged in. Keeping the
+         reference set to BepInEx + Unity + our own shared library avoids that entirely. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GameFlavor)' == 'Mono'">
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <DefineConstants>$(DefineConstants);MONO</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GameFlavor)' == 'IL2CPP'">
+    <TargetFramework>net6.0</TargetFramework>
+    <DefineConstants>$(DefineConstants);IL2CPP</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CarX.Telemetry.Shared\CarX.Telemetry.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(GameFlavor)' == 'Mono'">
+    <PackageReference Include="BepInEx.Core" Version="5.*" IncludeAssets="compile" />
+    <!-- Pin close to the game's engine version. UnityEngine.Modules only affects
+         compilation; the game supplies the real assemblies at runtime. -->
+    <PackageReference Include="UnityEngine.Modules" Version="2019.4.31" IncludeAssets="compile" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(GameFlavor)' == 'IL2CPP'">
+    <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-*" IncludeAssets="compile" />
+    <PackageReference Include="UnityEngine.Modules" Version="2022.3.21" IncludeAssets="compile" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Shipped profiles ride along inside the DLL and are written to
+         BepInEx/config/CarXTelemetry/profiles/ on first launch, where they can be edited. -->
+    <EmbeddedResource Include="..\..\profiles\*.profile" LogicalName="CarX.Telemetry.Mod.Profiles.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

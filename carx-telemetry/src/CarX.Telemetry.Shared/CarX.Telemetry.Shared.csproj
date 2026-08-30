@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- netstandard2.0 so the same assembly loads under BepInEx (Mono + IL2CPP)
+         and under SimHub (.NET Framework 4.8). -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <AssemblyName>CarX.Telemetry.Shared</AssemblyName>
+    <RootNamespace>CarX.Telemetry</RootNamespace>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>
