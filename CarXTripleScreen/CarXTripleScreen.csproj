@@ -1,0 +1,79 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>CarXTripleScreen</AssemblyName>
+    <RootNamespace>CarXTripleScreen</RootNamespace>
+    <Version>0.1.0</Version>
+    <!-- Conservative on purpose: net472 needs extra packages for tuples/records,
+         and a display mod is not worth a dependency for syntax sugar. -->
+    <LangVersion>7.3</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <DebugType>portable</DebugType>
+    <Deterministic>true</Deterministic>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!--
+    Two ways to build.
+
+    1. Default: reference assemblies from NuGet. Builds on any machine with the
+       .NET SDK, with no copy of the game present.
+           dotnet build -c Release
+
+    2. Against the real game, which is what you want if you ever need to
+       reference Assembly-CSharp directly:
+           dotnet build -c Release -p:GameDir="C:\Program Files (x86)\Steam\steamapps\common\CarX Street"
+       That also copies the built plugin straight into BepInEx/plugins.
+
+    Note there is deliberately no reference to Assembly-CSharp or to URP. Every
+    game-specific and pipeline-specific type is reached by reflection, so the
+    mod keeps loading when a game update reshuffles them, and a URP version
+    mismatch cannot turn into a TypeLoadException.
+  -->
+  <PropertyGroup>
+    <GameManagedDir Condition="'$(GameDir)' != ''">$(GameDir)\CarX Street_Data\Managed\</GameManagedDir>
+    <UseGameRefs Condition="'$(GameManagedDir)' != '' And Exists('$(GameManagedDir)')">true</UseGameRefs>
+    <UseGameRefs Condition="'$(UseGameRefs)' == ''">false</UseGameRefs>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseGameRefs)' != 'true'">
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.0" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseGameRefs)' == 'true'">
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameManagedDir)UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameManagedDir)UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(GameManagedDir)UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(GameManagedDir)UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>$(GameDir)\BepInEx\core\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GameDir)\BepInEx\core\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="DeployToGame" AfterTargets="Build"
+          Condition="'$(GameDir)' != '' And Exists('$(GameDir)\BepInEx\plugins')">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\" />
+    <Message Importance="high" Text="Deployed $(TargetFileName) to $(GameDir)\BepInEx\plugins\" />
+  </Target>
+
+</Project>
