@@ -50,12 +50,16 @@ The split that makes "works for all" possible:
 | `src/CarX.Telemetry.Mod/` | The BepInEx plugin that runs inside the game |
 | `src/CarX.Telemetry.SimHub/` | The SimHub plugin that receives and republishes as properties |
 | `profiles/` | Per-game binding files, seeded into the BepInEx config dir on first run |
+| `SETUP.md` | Step-by-step: what you actually have to do, in order |
+| `build.ps1` / `install.ps1` | Detect the game flavour, build, and copy everything into place |
 | `tools/fake_game.py` | Sends synthetic telemetry, so the SimHub side can be built without the game |
 | `tools/monitor.py` | Receives and prints frames, to check the mod before SimHub is involved |
 | `PROTOCOL.md` | The wire format and the channel list |
 | `docs/FINDING-FIELDS.md` | How to fill in a profile for a new build |
 
 ## Build
+
+See **[SETUP.md](SETUP.md)** for the full step-by-step walkthrough. The short version:
 
 Requires the .NET SDK. Two mod flavours, because the two mod loaders differ:
 
