@@ -51,6 +51,8 @@ The split that makes "works for all" possible:
 | `src/CarX.Telemetry.Mod/` | The BepInEx plugin that runs inside the game |
 | `src/CarX.Telemetry.SimHub/` | The SimHub plugin that receives and republishes as properties |
 | `profiles/` | Per-game binding files, seeded into the BepInEx config dir on first run |
+| `HANDOFF.md` | Handing the remaining work to the machine that has the game |
+| `setup.ps1` | One command on the PC: install BepInEx, build, deploy |
 | `SETUP.md` | Step-by-step: what you actually have to do, in order |
 | `build.ps1` / `install.ps1` | Detect the game flavour, build, and copy everything into place |
 | `verify.sh` | Builds everything and runs the tests — no game or SimHub needed |
