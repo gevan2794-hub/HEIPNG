@@ -31,6 +31,16 @@
       <HintPath>$(SimHubPath)\GameReaderCommon.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- SimHub.Logging.Current lives in its own assembly, not SimHub.Plugins, and it
+         hands back a log4net ILog - so both have to be referenced to call .Info/.Warn. -->
+    <Reference Include="SimHub.Logging">
+      <HintPath>$(SimHubPath)\SimHub.Logging.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="log4net">
+      <HintPath>$(SimHubPath)\log4net.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- '-p:UseStubs=true' type-checks this project without SimHub installed. The result
