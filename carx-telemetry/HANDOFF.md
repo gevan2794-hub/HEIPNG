@@ -28,16 +28,21 @@
 > folder — the encryption *is* the protection). Treat it as a clear signal from CarX that
 > they do not want the process touched, which is worth weighing before going further.
 >
-> **What is still open:** whether DRO2 exposes telemetry natively. Nothing was found in
-> the binary, but that search is inconclusive — IL2CPP string literals live inside the
-> encrypted metadata, so absence of evidence is not evidence of absence. Checking the
-> in-game settings for a telemetry or motion output option is the cheap next step, and it
-> would make this entire mod unnecessary.
+> **Both fallbacks are closed.** DRO2 has no native telemetry or data output of any kind
+> (confirmed by the owner in-game, which settles what the binary search could not — IL2CPP
+> string literals live inside the encrypted metadata, so nothing could be concluded from
+> the DLL either way). And DRO1 is out of scope.
 >
-> **A Mono CarX title remains fully viable.** The Mono flavour builds clean against real
-> BepInEx 5, and Mono games are decompilable, which makes step 5 far easier. DRO1 is Mono,
-> but the copy on this machine is a leftover `_Data` folder with no executable, so it
-> would need reinstalling to try.
+> **So the game half of this project is parked, not merely blocked.** There is no
+> remaining route to DRO2 telemetry that does not mean defeating the metadata encryption
+> — which is the game's anti-tamper measure, and is not something this repo will do. If
+> that changes, it changes from CarX's side: a moddable branch for Online 2 like the one
+> Online 1 has, or an official telemetry output. Asking them for it is the realistic move.
+>
+> **What is still worth having.** The SimHub plugin is a general UDP-JSON to SimHub
+> property bridge — it is not CarX-specific. Anything that speaks the protocol in
+> PROTOCOL.md feeds it, `fake_game.py` included, so dashboards and ShakeIt effects built
+> against it keep their value if a real source ever appears.
 
 Everything in this repo was written and tested in a cloud container with no CarX, no
 SimHub and no Windows. The remaining work needs the actual PC. This file is the handover.

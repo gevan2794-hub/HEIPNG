@@ -52,6 +52,8 @@ but check rather than assume — it decides everything downstream.
 > Il2CppInterop never generates the interop assemblies BepInEx 6 needs, and generation
 > fails on first launch before any mod code runs. See the status block in
 > [HANDOFF.md](HANDOFF.md). Nothing below fixes this; it is the game's anti-tamper.
+> Online 2 has no native telemetry output either, so there is no way round it from this
+> side — steps 0 and 6 (the SimHub half) still apply and still work.
 
 For **CarX Drift Racing Online 1**, also switch to the moddable build first:
 Steam → right-click the game → Properties → Betas → pick the entry marked *(moddable)*.
