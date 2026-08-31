@@ -1,5 +1,44 @@
 # Handover to a machine that has the game
 
+> ## Status after the first run on a real PC (2026-08-31)
+>
+> Windows 11, .NET SDK 9.0.305, SimHub at `C:\Program Files (x86)\SimHub`,
+> CarX Drift Racing Online 2 (Steam app 1826420), Unity **6000.3.19f1**, IL2CPP.
+>
+> **The SimHub half works and is installed.** The plugin builds against the real
+> assemblies, loads the right interfaces, and the wire protocol carries all 59 channels
+> at 60Hz from `fake_game.py`.
+>
+> **The game half is blocked on DRO2, and not by anything in this repo.** The game ships
+> an *encrypted* `global-metadata.dat`:
+>
+> ```
+> magic   : 0xCD756523      (IL2CPP metadata must start with 0xFAB11BAF)
+> entropy : 7.861 bits/byte over the first 4KB, all 256 byte values present
+> scan    : 0xFAB11BAF appears nowhere in the 31MB file
+> ```
+>
+> Cpp2IL cannot read encrypted metadata, so Il2CppInterop cannot generate the interop
+> assemblies, so BepInEx 6 cannot produce the managed layer an IL2CPP plugin needs. This
+> fails on the game's first launch, before any of our code runs. Installing BepInEx and
+> launching the game does not get past it — that was tried; BepInEx was removed again and
+> the game folder is back to stock.
+>
+> This is a deliberate anti-tamper measure (there is no EasyAntiCheat or BattlEye in the
+> folder — the encryption *is* the protection). Treat it as a clear signal from CarX that
+> they do not want the process touched, which is worth weighing before going further.
+>
+> **What is still open:** whether DRO2 exposes telemetry natively. Nothing was found in
+> the binary, but that search is inconclusive — IL2CPP string literals live inside the
+> encrypted metadata, so absence of evidence is not evidence of absence. Checking the
+> in-game settings for a telemetry or motion output option is the cheap next step, and it
+> would make this entire mod unnecessary.
+>
+> **A Mono CarX title remains fully viable.** The Mono flavour builds clean against real
+> BepInEx 5, and Mono games are decompilable, which makes step 5 far easier. DRO1 is Mono,
+> but the copy on this machine is a leftover `_Data` folder with no executable, so it
+> would need reinstalling to try.
+
 Everything in this repo was written and tested in a cloud container with no CarX, no
 SimHub and no Windows. The remaining work needs the actual PC. This file is the handover.
 
@@ -56,16 +95,26 @@ Install Claude Code on the PC, open this folder, and paste:
 
 ## What that session should expect
 
-**Already verified, no need to re-litigate:** all three assemblies compile clean against
-stubs, and 102 logic tests pass over the JSON codec, the reflection path resolver and the
-profile parser. Run `./verify.sh` (bash) or the equivalent `dotnet build`/`dotnet run`
-commands to reproduce.
+**Verified on a real PC, no need to re-litigate:**
+
+- The stub build and the 102 logic tests still pass (`./verify.sh`).
+- **The SimHub API was inferred correctly.** Reflection over the real `SimHub.Plugins.dll`
+  confirms `AddProperty<T>(name, type, value, description = "")`,
+  `SetPropertyValue(name, type, value)`, `IDataPlugin.DataUpdate(PluginManager, ref GameData)`
+  and `IPlugin`. The one wrong guess was that `SimHub.Logging` lives in `SimHub.Plugins.dll`
+  — it is its own assembly and returns a log4net `ILog`, so both DLLs are referenced now.
+  The plugin builds clean and is installed.
+- The Mono mod flavour builds clean against real BepInEx 5.
+- `fake_game.py` → `monitor.py` carries all 59 channels at 60Hz.
 
 **Genuinely unverified, in rough order of risk:**
 
-1. **`src/CarX.Telemetry.SimHub`** — the SimHub API signatures are inferred, not read off
-   the real DLL. Most likely thing to fail on first build. `PluginManager.AddProperty` /
-   `SetPropertyValue` and the `IDataPlugin.DataUpdate` signature are the ones to check.
+1. **The IL2CPP reference set.** `CarX.Telemetry.Mod.csproj` now compiles IL2CPP builds
+   against `BepInEx\interop` instead of the stock `UnityEngine.Modules` package, because
+   only the Il2CppInterop `MonoBehaviour` has the `IntPtr` constructor `TelemetryService`
+   needs. **This change has never been compiled** — it needs an interop folder, and no
+   IL2CPP CarX title on this machine can produce one (see the status block above). Without
+   `-p:GamePath` it now fails with an explicit message rather than a confusing `CS1729`.
 2. **`VehicleLocator`** — the scoring heuristic that picks the player's car out of the
    scene has never run against a real Unity scene. If it picks nothing, or picks an AI
    car, that is the thing to tune.

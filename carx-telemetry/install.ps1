@@ -63,8 +63,8 @@ if (-not $ModOnly) {
         Write-Warn2 "dist\simhub is missing -- skipping the SimHub plugin."
         Write-Warn2 "That is fine if you are using the UDPConnector plugin instead."
     }
-    elseif (-not (Test-Path -LiteralPath (Join-Path $SimHubPath 'SimHub.exe'))) {
-        Write-Warn2 "SimHub.exe not found under $SimHubPath -- skipping. Pass -SimHubPath."
+    elseif (-not (@('SimHubWPF.exe', 'SimHub.exe') | Where-Object { Test-Path -LiteralPath (Join-Path $SimHubPath $_) })) {
+        Write-Warn2 "No SimHub executable found under $SimHubPath -- skipping. Pass -SimHubPath."
     }
     else {
         if (Get-Process -Name 'SimHubWPF', 'SimHub' -ErrorAction SilentlyContinue) {

@@ -43,9 +43,41 @@
 
   <!-- UnityEngine.Modules affects compilation only; the game supplies the real
        assemblies at runtime, so the exact version does not need to match the game.
-       2021.3.33 is the only version published on nuget.org. -->
-  <ItemGroup>
+       2021.3.33 is the only version published on nuget.org.
+
+       Mono builds and every stub build use it. A real IL2CPP build must not: see below. -->
+  <ItemGroup Condition="'$(GameFlavor)' == 'Mono' or '$(UseStubs)' == 'true'">
     <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" IncludeAssets="compile" />
+  </ItemGroup>
+
+  <!-- A real IL2CPP build compiles against the assemblies Il2CppInterop generates, not
+       against stock Unity. Under Il2CppInterop every Unity type is regenerated as a
+       managed proxy deriving from Il2CppObjectBase, and only that MonoBehaviour has the
+       IntPtr constructor TelemetryService needs. Against the stock package you get:
+
+         error CS1729: 'MonoBehaviour' does not contain a constructor that takes 1 arguments
+         error CS1503: cannot convert 'TelemetryService' to 'Il2CppObjectBase'
+
+       BepInEx writes these assemblies into BepInEx\interop on the game's first launch,
+       so they come from the install rather than from a package. Point the build at the
+       game with -p:GamePath="<folder with the .exe>", or name the folder directly with
+       -p:InteropPath="...". -->
+  <PropertyGroup Condition="'$(GameFlavor)' == 'IL2CPP' and '$(UseStubs)' != 'true'">
+    <InteropPath Condition="'$(InteropPath)' == '' and '$(GamePath)' != ''">$(GamePath)\BepInEx\interop</InteropPath>
+  </PropertyGroup>
+
+  <Target Name="RequireInteropAssemblies" BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(GameFlavor)' == 'IL2CPP' and '$(UseStubs)' != 'true'">
+    <Error Condition="'$(InteropPath)' == ''"
+           Text="An IL2CPP build needs the Il2CppInterop assemblies. Pass -p:GamePath=&quot;&lt;folder with the .exe&gt;&quot;, or -p:InteropPath=&quot;...&quot;. To type-check without a game, use -p:UseStubs=true." />
+    <Error Condition="'$(InteropPath)' != '' and !Exists('$(InteropPath)')"
+           Text="No interop assemblies at $(InteropPath). Install BepInEx 6 (IL2CPP x64) into the game folder and launch the game once so it generates them." />
+  </Target>
+
+  <ItemGroup Condition="'$(GameFlavor)' == 'IL2CPP' and '$(UseStubs)' != 'true' and '$(InteropPath)' != '' and Exists('$(InteropPath)')">
+    <Reference Include="$(InteropPath)\*.dll">
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- BepInEx lives on its own NuGet feed (https://nuget.bepinex.dev/v3/index.json),

@@ -46,6 +46,13 @@ Open the game's install folder (Steam → right-click the game → Manage → Br
 CarX Drift Racing Online 1 is Mono. Online 2 is a newer engine and is more likely IL2CPP,
 but check rather than assume — it decides everything downstream.
 
+> **Online 2 does not currently work, and steps 2–5 cannot be completed on it.** As of
+> Unity 6000.3.19f1 it ships an encrypted `global-metadata.dat` (magic `0xCD756523`
+> instead of `0xFAB11BAF`, ~7.86 bits/byte entropy). Cpp2IL cannot read it, so
+> Il2CppInterop never generates the interop assemblies BepInEx 6 needs, and generation
+> fails on first launch before any mod code runs. See the status block in
+> [HANDOFF.md](HANDOFF.md). Nothing below fixes this; it is the game's anti-tamper.
+
 For **CarX Drift Racing Online 1**, also switch to the moddable build first:
 Steam → right-click the game → Properties → Betas → pick the entry marked *(moddable)*.
 Check whether Online 2 offers the same.
