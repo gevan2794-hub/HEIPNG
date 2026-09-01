@@ -24,7 +24,8 @@
 
     2. Against the real game, which is what you want if you ever need to
        reference Assembly-CSharp directly:
-           dotnet build -c Release -p:GameDir="C:\Program Files (x86)\Steam\steamapps\common\CarX Street"
+           dotnet build -c Release -p:GameDir="...\steamapps\common\CarX Drift Racing Online"
+           dotnet build -c Release -p:GameDir="...\steamapps\common\CarX Street"
        That also copies the built plugin straight into BepInEx/plugins.
 
     Note there is deliberately no reference to Assembly-CSharp or to URP. Every
@@ -33,14 +34,18 @@
     mismatch cannot turn into a TypeLoadException.
   -->
   <PropertyGroup>
-    <GameManagedDir Condition="'$(GameDir)' != ''">$(GameDir)\CarX Street_Data\Managed\</GameManagedDir>
+    <!-- Unity names the managed folder after the product, so it differs per title
+         and cannot be hardcoded to one game. Each supported title gets a candidate;
+         for anything not listed, pass -p:GameManagedDir="...\Whatever_Data\Managed\". -->
+    <GameManagedDir Condition="'$(GameManagedDir)' == '' And '$(GameDir)' != '' And Exists('$(GameDir)\Drift Racing Online_Data\Managed')">$(GameDir)\Drift Racing Online_Data\Managed\</GameManagedDir>
+    <GameManagedDir Condition="'$(GameManagedDir)' == '' And '$(GameDir)' != '' And Exists('$(GameDir)\CarX Street_Data\Managed')">$(GameDir)\CarX Street_Data\Managed\</GameManagedDir>
     <UseGameRefs Condition="'$(GameManagedDir)' != '' And Exists('$(GameManagedDir)')">true</UseGameRefs>
     <UseGameRefs Condition="'$(UseGameRefs)' == ''">false</UseGameRefs>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(UseGameRefs)' != 'true'">
     <PackageReference Include="BepInEx.Core" Version="5.4.21" PrivateAssets="all" ExcludeAssets="runtime" />
-    <PackageReference Include="UnityEngine.Modules" Version="2021.3.0" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" PrivateAssets="all" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(UseGameRefs)' == 'true'">

@@ -1,12 +1,29 @@
 # CarX Triple Screen
 
-True triple-screen rendering for CarX Street: three cameras, correct per-screen
-projection, bezel compensation, configurable monitor angles. The game only
-stretches a single flat frustum across a surround resolution, which distorts the
-outer thirds badly; this replaces that with one correctly-projected frustum per
-physical panel.
+True triple-screen rendering for the Mono-runtime CarX titles: three cameras,
+correct per-screen projection, bezel compensation, configurable monitor angles.
+The game only stretches a single flat frustum across a surround resolution, which
+distorts the outer thirds badly; this replaces that with one correctly-projected
+frustum per physical panel.
 
-**Target:** CarX Street (Steam), Unity 2021.3, Mono runtime
+**Targets:**
+
+| Game | Unity | Runtime | Supported |
+|---|---|---|---|
+| CarX Drift Racing Online (1) | 6000.3-era `2023.2.22f1` | Mono | yes |
+| CarX Street | 2021.3 | Mono | yes |
+| CarX Drift Racing Online 2 | 6000.3.19f1 | IL2CPP | **no** — see below |
+
+Nothing in the C# is specific to a title: every game type is reached by
+reflection and named in config, so supporting another Mono CarX game is a build
+flag, not a code change.
+
+**DRO2 is not supported and cannot be.** It is an IL2CPP build shipping an
+encrypted `global-metadata.dat`, so Cpp2IL cannot dump it, Il2CppInterop cannot
+generate interop assemblies, and BepInEx 6 fails during first-launch generation
+before any plugin runs. DRO2 also gained native triple-screen support from CarX
+in 2026, which makes the point moot there.
+
 **Loader:** BepInEx 5.4.21+ (Mono, x64) · **Patching:** HarmonyX · **Language:** C#, `net472`
 
 > Single-player display mod. Do not run it in online modes — injecting a DLL into
@@ -21,11 +38,11 @@ Read this before you build anything.
 | | |
 |---|---|
 | Projection math | **Verified.** `tools/validate_projection.py` checks it against ray-traced ground truth; tier 2 is exact to floating point. |
-| Plugin code | **Written, never compiled and never run.** It was developed without a copy of the game and without a .NET toolchain. |
+| Plugin code | **Compiles clean** (.NET SDK 9.0.305, `dotnet build -c Release`, zero warnings). Still **never run** — no Mono CarX title was installed to load it into. |
 | Phase 0 recon | **Not done** — it requires the installed game. The plugin performs it for you instead; see below. |
 
-So: expect to fix compile errors on the first `dotnet build`, and treat the first
-in-game run as the start of M1, not the end of it. Everything the spec's Phase 0
+So: the build is no longer the risk — treat the first in-game run as the start of
+M1, not the end of it. Everything the spec's Phase 0
 was meant to establish is a runtime setting here rather than a compile-time fact,
 which is what makes the code deliverable without the game in hand.
 
@@ -43,8 +60,12 @@ this builds on any machine with the .NET SDK and no copy of the game.
 To build against the real install and deploy in one step:
 
 ```bash
-dotnet build -c Release -p:GameDir="C:\Program Files (x86)\Steam\steamapps\common\CarX Street"
+dotnet build -c Release -p:GameDir="D:\SteamLibrary\steamapps\common\CarX Drift Racing Online"
 ```
+
+The managed-assembly folder is named after the product, so the csproj carries a
+candidate per supported title. For anything else, name it directly with
+`-p:GameManagedDir="...\Whatever_Data\Managed\"`.
 
 There is deliberately **no reference to `Assembly-CSharp.dll` or to URP**. Every
 game-specific and pipeline-specific type is reached by reflection, so a game

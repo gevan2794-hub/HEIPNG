@@ -15,11 +15,18 @@ tags (`[M0.1]` … `[M0.6]`) match between the two files.
 
 ## `[M0.1]` Runtime — Mono or IL2CPP?
 
+**Answered for CarX Drift Racing Online 1**, from its leftover Unity player log at
+`AppData/LocalLow/CarX Technologies/Drift Racing Online/Player.log` — no install
+required:
+
 | | |
 |---|---|
-| `CarX Street_Data/Managed/Assembly-CSharp.dll` present | **UNKNOWN** |
-| Unity version | **UNKNOWN** |
-| Verdict | **UNKNOWN** |
+| Unity version | **2023.2.22f1** |
+| Runtime | **Mono.** The log carries managed stack traces with Mono runtime internals (`System.RuntimeType:CreateInstanceMono`): 143 `mono` mentions, against **0** in DRO2's IL2CPP log used as a control. |
+| Verdict | **BepInEx 5 (Mono, x64) is correct.** |
+| `Drift Racing Online_Data/Managed/Assembly-CSharp.dll` present | unconfirmed — the game is not currently installed |
+
+Still **UNKNOWN** for CarX Street. Same two questions, same method.
 
 If `Managed/` exists with readable assemblies it is Mono and BepInEx 5 is
 correct. If instead there is a `GameAssembly.dll`, **stop** — the whole approach
@@ -117,7 +124,7 @@ millimetres, all in the `1. Geometry` config section.
 | `EyeDistanceMm` | | along the centre panel's normal |
 | `SideAngleDeg` | | measured, not guessed |
 | `EyeOffsetXMm` / `EyeOffsetYMm` | 0 / 0 | tier 2 only |
-| `PerScreenWidthPx` / `PerScreenHeightPx` | 0 / 0 | 0 derives from the window |
+| `PerScreenWidthPx` / `PerScreenHeightPx` | 0 / 0 | 0 derives from the window. Both CarX titles are stored at **7680x1440** in `HKCU\Software\CarX Technologies\...`, i.e. three 2560x1440 panels, so the derived value will be right and these can stay 0. |
 
 On startup the mod logs the **ideal side angle** for whatever else you measured —
 the angle at which tier 1 becomes exact. Compare it against your real
