@@ -118,6 +118,14 @@ namespace CarX.Telemetry.Receiver
             pluginManager.SetPropertyValue("PacketsLost", GetType(), _receiver.PacketsLost);
             pluginManager.SetPropertyValue("PacketsRejected", GetType(), _receiver.PacketsRejected);
 
+            // Publish into SimHub's OWN telemetry fields, not just plugin properties.
+            // This is what makes CarX behave like a supported game: built-in ShakeIt
+            // effects, motion profiles and dashboards all read StatusDataBase, so binding
+            // them by hand to CarXTelemetryPlugin.* properties should not be necessary.
+            // Done every tick rather than only on a new frame, because SimHub repopulates
+            // this structure continuously and a stale write would be overwritten.
+            if (connected) PublishAsGame(data, snapshot);
+
             if (connected != _wasConnected)
             {
                 _wasConnected = connected;
@@ -151,6 +159,107 @@ namespace CarX.Telemetry.Receiver
                 if (_publishedStrings.Add(entry.Key)) pluginManager.AddProperty(entry.Key, GetType(), "");
                 pluginManager.SetPropertyValue(entry.Key, GetType(), entry.Value);
             }
+        }
+
+        /// <summary>
+        /// Maps our channels onto SimHub's standard telemetry so that anything reading
+        /// normal game data -- built-in ShakeIt effects, motion profiles, dashboards --
+        /// sees CarX as a running game and needs no hand-bound properties.
+        ///
+        /// SimHub declares these setters <c>internal</c>, so they are reached through
+        /// cached delegates rather than direct assignment. That is deliberately the only
+        /// non-public API this plugin touches, and it is the reason a SimHub update could
+        /// break this path: if a name changes, the setter simply resolves to null and the
+        /// field is skipped rather than throwing. The plugin's own
+        /// CarXTelemetryPlugin.* properties keep working regardless.
+        /// </summary>
+        private static class Native
+        {
+            private static Action<T1, T2> Setter<T1, T2>(string property)
+            {
+                var info = typeof(T1).GetProperty(property, BindingFlags.Public | BindingFlags.Instance);
+                var setter = info?.GetSetMethod(true);
+                if (setter == null) return null;
+                return (Action<T1, T2>)Delegate.CreateDelegate(typeof(Action<T1, T2>), setter, false);
+            }
+
+            internal static readonly Action<GameData, bool> GameRunning = Setter<GameData, bool>("GameRunning");
+            internal static readonly Action<GameData, string> GameName = Setter<GameData, string>("GameName");
+
+            internal static readonly Action<StatusDataBase, double> Rpms = Setter<StatusDataBase, double>("Rpms");
+            internal static readonly Action<StatusDataBase, double> MaxRpm = Setter<StatusDataBase, double>("MaxRpm");
+            internal static readonly Action<StatusDataBase, double> MaxRpmSetting = Setter<StatusDataBase, double>("CarSettings_MaxRPM");
+            internal static readonly Action<StatusDataBase, double> RedLine = Setter<StatusDataBase, double>("CarSettings_RedLineRPM");
+            internal static readonly Action<StatusDataBase, double> SpeedKmh = Setter<StatusDataBase, double>("SpeedKmh");
+            internal static readonly Action<StatusDataBase, double> SpeedMph = Setter<StatusDataBase, double>("SpeedMph");
+            internal static readonly Action<StatusDataBase, double> SpeedLocal = Setter<StatusDataBase, double>("SpeedLocal");
+            internal static readonly Action<StatusDataBase, double> Throttle = Setter<StatusDataBase, double>("Throttle");
+            internal static readonly Action<StatusDataBase, double> Brake = Setter<StatusDataBase, double>("Brake");
+            internal static readonly Action<StatusDataBase, double> Clutch = Setter<StatusDataBase, double>("Clutch");
+            internal static readonly Action<StatusDataBase, double> Handbrake = Setter<StatusDataBase, double>("Handbrake");
+            internal static readonly Action<StatusDataBase, string> Gear = Setter<StatusDataBase, string>("Gear");
+            internal static readonly Action<StatusDataBase, string> CarModel = Setter<StatusDataBase, string>("CarModel");
+            internal static readonly Action<StatusDataBase, string> TrackName = Setter<StatusDataBase, string>("TrackName");
+            internal static readonly Action<StatusDataBase, double?> Sway = Setter<StatusDataBase, double?>("AccelerationSway");
+            internal static readonly Action<StatusDataBase, double?> Surge = Setter<StatusDataBase, double?>("AccelerationSurge");
+            internal static readonly Action<StatusDataBase, double?> Heave = Setter<StatusDataBase, double?>("AccelerationHeave");
+        }
+
+        private void PublishAsGame(GameData data, Snapshot snapshot)
+        {
+            Native.GameRunning?.Invoke(data, true);
+
+            var gameName = snapshot.Strings.TryGetValue("GameName", out var reported) && !string.IsNullOrEmpty(reported)
+                ? reported
+                : "CarX Drift Racing Online";
+            Native.GameName?.Invoke(data, gameName);
+
+            var s = data.NewData;
+            if (s == null) return;
+
+            double Value(string key) => snapshot.Numbers.TryGetValue(key, out var v) ? v : 0d;
+            bool Has(string key) => snapshot.Numbers.ContainsKey(key);
+
+            if (Has("Rpm")) Native.Rpms?.Invoke(s, Value("Rpm"));
+
+            if (Has("MaxRpm"))
+            {
+                var max = Value("MaxRpm");
+                Native.MaxRpm?.Invoke(s, max);
+                Native.MaxRpmSetting?.Invoke(s, max);
+                Native.RedLine?.Invoke(s, max);
+            }
+
+            if (Has("SpeedKph"))
+            {
+                var kmh = Value("SpeedKph");
+                Native.SpeedKmh?.Invoke(s, kmh);
+                Native.SpeedLocal?.Invoke(s, kmh);
+                Native.SpeedMph?.Invoke(s, Has("SpeedMph") ? Value("SpeedMph") : kmh * 0.621371);
+            }
+
+            // SimHub expresses pedals as 0-100, the wire protocol as 0-1.
+            if (Has("Throttle")) Native.Throttle?.Invoke(s, Value("Throttle") * 100d);
+            if (Has("Brake")) Native.Brake?.Invoke(s, Value("Brake") * 100d);
+            if (Has("Clutch")) Native.Clutch?.Invoke(s, Value("Clutch") * 100d);
+            if (Has("Handbrake")) Native.Handbrake?.Invoke(s, Value("Handbrake") * 100d);
+
+            // Gear is text in SimHub: R, N, then the number.
+            if (Has("Gear"))
+            {
+                var g = (int)Math.Round(Value("Gear"));
+                Native.Gear?.Invoke(s, g < 0 ? "R" : g == 0 ? "N" : g.ToString(CultureInfo.InvariantCulture));
+            }
+
+            // The channels ShakeIt and every motion rig actually consume.
+            if (Has("AccelSwayG")) Native.Sway?.Invoke(s, Value("AccelSwayG"));
+            if (Has("AccelSurgeG")) Native.Surge?.Invoke(s, Value("AccelSurgeG"));
+            if (Has("AccelHeaveG")) Native.Heave?.Invoke(s, Value("AccelHeaveG"));
+
+            if (snapshot.Strings.TryGetValue("CarName", out var car) && !string.IsNullOrEmpty(car))
+                Native.CarModel?.Invoke(s, car);
+            if (snapshot.Strings.TryGetValue("TrackName", out var track) && !string.IsNullOrEmpty(track))
+                Native.TrackName?.Invoke(s, track);
         }
 
         public void End(PluginManager pluginManager)

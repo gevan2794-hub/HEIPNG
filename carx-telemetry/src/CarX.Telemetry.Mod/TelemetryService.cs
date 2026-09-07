@@ -117,11 +117,18 @@ namespace CarX.Telemetry.Mod
 
             var now = Time.unscaledTime;
             var hadVehicle = _locator.HasVehicle;
+            var previousBody = _locator.Body;
 
             _locator.Update(_profile, now, _settings.VehicleSearchIntervalSeconds);
 
             // A new car means the acceleration filter's history belongs to the old one.
             if (_locator.HasVehicle && !hadVehicle) _sampler.Reset();
+
+            // The locator can upgrade to a better candidate mid-session. Unresolved-channel
+            // warnings are reported once each, so without clearing them here a failure
+            // against the wrong vehicle -- a roadside prop grabbed before the car spawned --
+            // stays in the log looking like a live failure long after the real car arrived.
+            if (!ReferenceEquals(_locator.Body, previousBody)) _reportedUnresolved.Clear();
 
             PollDumpKey();
             if (_dumpRequested)
