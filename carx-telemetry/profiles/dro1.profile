@@ -1,51 +1,41 @@
-# dro1.profile -- CarX Drift Racing Online (Steam 635260, Unity 2019, Mono).
+# dro1.profile -- CarX Drift Racing Online (Steam 635260), moddable branch.
 #
-# STATUS: locator settings are game-specific; the [channels] block is a TEMPLATE.
-# The field names below are commented out because they have NOT been verified against a
-# current build -- do not assume they are right. Fill them in yourself:
+# Filled in by reading the game's own assemblies, not by dumping in game:
+#   Assembly-CSharp.dll      -> RaceCar : BaseCar is the player's car component
+#   CarX.Plugins.Core.dll    -> CarX.Car is the physics/powertrain MonoBehaviour
 #
-#   1. Launch with the mod installed, get into a car, hold a known state
-#      (e.g. sit at idle, then hold ~3000rpm in 2nd gear).
-#   2. Press F9. The BepInEx console prints every component on the car and every
-#      numeric field with its live value.
-#   3. Find the field whose value matches the in-game HUD, and uncomment/edit the
-#      matching line below using  <ComponentTypeName>.<field chain>  syntax.
-#   4. Save; restart the game (profiles are read at startup).
-#
-# Because this game is Mono, you can also just open Assembly-CSharp.dll in dnSpy or
-# ILSpy and read the real field names straight out of the car controller class, which is
-# faster than hunting through a dump. See docs/FINDING-FIELDS.md.
+# Channels address components by their SIMPLE type name, so CarX.Car is "Car".
 
 [profile]
 name     = CarX Drift Racing Online
-match    = (?i)carx.?drift.?racing.?online(?!.?2)
+# The game reports its product name as "Drift Racing Online" -- no "CarX" -- so the
+# old pattern never matched and it fell through to the generic profile.
+match    = (?i)(carx.?)?drift.?racing.?online(?!.?2)
 priority = 10
 
 [locator]
-vehicleType       = (?i)(car|vehicle|drift)
-minWheelColliders = 4
+# RaceCar is the player's car; CarAI drives the opponents. Both carry RaceCar, so the
+# camera and Player-tag bonuses in the scorer are what separate them.
+vehicleType       = (?i)racecar
+# CarX ships ZERO Unity WheelColliders -- it has its own tyre model (CarX.Car,
+# TiresConfig, WheelIndex[]). Requiring 4 made the locator reject every car in the
+# scene, which is why nothing was ever found. The car does have a real Rigidbody
+# (BaseCar.getRigidbody -> CarX.Car.getRigidbody), so the engine-derived channels work.
+minWheelColliders = 0
 
 [channels]
 # --- powertrain ---
-# Rpm        = CarController.engineRpm
-# MaxRpm     = CarController.maxRpm
-# IdleRpm    = CarController.idleRpm
-# Gear       = CarController.currentGear
-# TurboBoost = CarController.turboPressure
+Rpm        = Car.rpm
+Gear       = Car.gear
+IdleRpm    = Car.engineIdleRPM
+MaxRpm     = Car.engineCutRPM
+TurboBoost = Car.engineTurboPressure
 
-# --- driver inputs, expected 0..1 (add "* 0.01" if the game stores 0..100) ---
-# Throttle   = CarController.gasInput
-# Brake      = CarController.brakeInput
-# Clutch     = CarController.clutchInput
-# Handbrake  = CarController.handbrakeInput
-# SteerAngle = CarController.steerAngle
+# --- driver inputs ---
+Brake      = Car.brake
+Handbrake  = Car.handbrake
+Clutch     = Car.clutch
+SteerAngle = Car.steerAngle
 
-# --- per-wheel, expanded to FL/FR/RL/RR in array order ---
-# TireSlip[]      = CarController.wheels[*].slipAngle
-# WheelSpeed[]    = CarController.wheels[*].rpm
-# SuspTravel[]    = CarController.wheels[*].suspensionTravel
-# WheelGrounded[] = CarController.wheels[*].isGrounded
-
-# --- scoring ---
-# DriftScore = DriftScoreController.totalScore
-# DriftCombo = DriftScoreController.comboMultiplier
+# Throttle has no obviously-named property on CarX.Car; it is not "gas" or "throttle".
+# Left out rather than guessed. Everything else here is read off the real assembly.
