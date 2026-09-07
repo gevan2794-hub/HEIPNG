@@ -20,6 +20,13 @@ namespace CarX.Telemetry.Mod
         private Rigidbody _body;
         private Transform _transform;
         private float _nextSearchTime;
+        private int _heldScore;
+
+        /// <summary>
+        /// A playerType hit is worth 500, so at or above this the match is "definitely the
+        /// local player's car" and the search can stop. Anything weaker is provisional.
+        /// </summary>
+        private const int ConfidentScore = 500;
 
         /// <summary>Components on the located car, keyed by type name, for MemberPath roots.</summary>
         private readonly Dictionary<string, Component> _components = new Dictionary<string, Component>(StringComparer.OrdinalIgnoreCase);
@@ -47,9 +54,15 @@ namespace CarX.Telemetry.Mod
         {
             // Unity's overloaded == means a destroyed object compares equal to null here,
             // which is exactly the signal we want for "the car went away".
-            if (_body != null && _transform != null) return;
+            var held = _body != null && _transform != null;
 
-            if (_body != null || _transform != null) Release();
+            // Only a confident match ends the search. A weak one is provisional: before
+            // the car spawns, any heavy prop can satisfy the generic rules, and holding it
+            // forever is how a roadside dumpster ends up supplying your telemetry. Keep
+            // re-scoring until something clearly better turns up.
+            if (held && _heldScore >= ConfidentScore) return;
+
+            if (!held && (_body != null || _transform != null)) Release();
             if (now < _nextSearchTime) return;
 
             _nextSearchTime = now + searchIntervalSeconds;
@@ -60,6 +73,7 @@ namespace CarX.Telemetry.Mod
         {
             _body = null;
             _transform = null;
+            _heldScore = 0;
             MatchedComponent = null;
             _components.Clear();
         }
@@ -85,6 +99,11 @@ namespace CarX.Telemetry.Mod
 
             if (best == null) return;
 
+            // Never downgrade, and do not churn on an equal score -- that would re-log the
+            // same car every interval.
+            if (_body != null && bestScore <= _heldScore) return;
+
+            _heldScore = bestScore;
             _body = best;
             _transform = best.transform;
             MatchedComponent = bestMatch != null ? bestMatch.GetType().Name : "(none)";

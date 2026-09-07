@@ -1,41 +1,44 @@
 # dro1.profile -- CarX Drift Racing Online (Steam 635260), moddable branch.
 #
-# Filled in by reading the game's own assemblies, not by dumping in game:
-#   Assembly-CSharp.dll      -> RaceCar : BaseCar is the player's car component
-#   CarX.Plugins.Core.dll    -> CarX.Car is the physics/powertrain MonoBehaviour
-#
-# Channels address components by their SIMPLE type name, so CarX.Car is "Car".
+# Verified against a live F8 dump on a ToyotaGT86, not guessed. The physics component
+# is CARXCar (the game's subclass of CarX.Car, same CARX-prefix pattern as
+# CARXFollowCamera). Components are addressed by SIMPLE type name.
 
 [profile]
 name     = CarX Drift Racing Online
-# The game reports its product name as "Drift Racing Online" -- no "CarX" -- so the
-# old pattern never matched and it fell through to the generic profile.
+# The game reports its product name as "Drift Racing Online" -- no "CarX".
 match    = (?i)(carx.?)?drift.?racing.?online(?!.?2)
 priority = 10
 
 [locator]
-# RaceCar is the player's car; CarAI drives the opponents. Both carry RaceCar, so the
-# camera and Player-tag bonuses in the scorer are what separate them.
+# RaceCar sits on the player's car. CarAI is present on it too, so AI is not a
+# discriminator. InteriorMinimap and MirrorCameraHold only exist on the car you are
+# actually driving, so they serve as the local-player marker (worth +500).
 vehicleType       = (?i)racecar
-# CarX ships ZERO Unity WheelColliders -- it has its own tyre model (CarX.Car,
-# TiresConfig, WheelIndex[]). Requiring 4 made the locator reject every car in the
-# scene, which is why nothing was ever found. The car does have a real Rigidbody
-# (BaseCar.getRigidbody -> CarX.Car.getRigidbody), so the engine-derived channels work.
+playerType        = (?i)^(interiorminimap|mirrorcamerahold)$
+# CarX ships ZERO Unity WheelColliders -- it has its own tyre model. Requiring 4 made
+# the locator reject every car in the scene. The car does carry a real Rigidbody.
 minWheelColliders = 0
 
 [channels]
 # --- powertrain ---
-Rpm        = Car.rpm
-Gear       = Car.gear
-IdleRpm    = Car.engineIdleRPM
-MaxRpm     = Car.engineCutRPM
-TurboBoost = Car.engineTurboPressure
+Rpm        = CARXCar.rpm
+Gear       = CARXCar.gear
+IdleRpm    = CARXCar.engineIdleRPM
+# NOT engineCutRPM: that reads 300 and is the stall cutoff, not a redline. The
+# gearbox upshift limit (7000) is the useful upper reference for gauges and shift lights.
+MaxRpm     = CARXCar.gearBoxUpLimitRPM
+TurboBoost = CARXCar.engineTurboPressure
 
 # --- driver inputs ---
-Brake      = Car.brake
-Handbrake  = Car.handbrake
-Clutch     = Car.clutch
-SteerAngle = Car.steerAngle
+# Throttle is called 'accelerate' here -- not gas, not throttle.
+Throttle   = CARXCar.accelerate
+Brake      = CARXCar.brake
+Handbrake  = CARXCar.handbrake
+Clutch     = CARXCar.clutch
+SteerAngle = CARXCar.steerAngle
 
-# Throttle has no obviously-named property on CarX.Car; it is not "gas" or "throttle".
-# Left out rather than guessed. Everything else here is read off the real assembly.
+# --- extras worth having for ShakeIt engine effects ---
+EngineTorque = CARXCar.engineCurTorque
+EnginePower  = CARXCar.engineCurPower
+EngineLoad   = CARXCar.load
