@@ -65,6 +65,13 @@
       <HintPath>$(GameManagedDir)UnityEngine.IMGUIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- The clone carries an AudioListener decision, so this module is needed too.
+         The NuGet path bundles every module, which is why the gap only shows up
+         when building against a real install. -->
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(GameManagedDir)UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="BepInEx">
       <HintPath>$(GameDir)\BepInEx\core\BepInEx.dll</HintPath>
       <Private>false</Private>

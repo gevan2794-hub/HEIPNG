@@ -15,9 +15,13 @@ tags (`[M0.1]` … `[M0.6]`) match between the two files.
 
 ## `[M0.1]` Runtime — Mono or IL2CPP?
 
-**Answered for CarX Drift Racing Online 1**, from its leftover Unity player log at
-`AppData/LocalLow/CarX Technologies/Drift Racing Online/Player.log` — no install
-required:
+**Answered for CarX Drift Racing Online 1 on the `moddable` Steam branch**
+(buildid 24351645), read off the install:
+
+> **The branch decides the runtime.** The default `public` branch is an **IL2CPP**
+> build (`GameAssembly.dll`, no `Managed/`). The `moddable` branch is **Mono**
+> (`MonoBleedingEdge/`, `Managed/Assembly-CSharp.dll`). BepInEx 5 is correct only
+> on `moddable`; on `public` you would need BepInEx 6. Check before installing.
 
 | | |
 |---|---|
@@ -37,33 +41,34 @@ a warning at startup if `Assembly-CSharp` is missing.
 
 ## `[M0.2]` Render pipeline — URP or built-in?
 
-| | |
-|---|---|
-| `Unity.RenderPipelines.Universal.Runtime.dll` in `Managed/` | **UNKNOWN** |
-| Live `GraphicsSettings.currentRenderPipeline` | **UNKNOWN** |
-| Verdict | **UNKNOWN** |
+**Neither: DRO1 is HDRP.** `Drift Racing Online_Data/Managed/` ships
+`Unity.RenderPipelines.HighDefinition.Runtime.dll` (and no Universal assembly), on
+both the public and moddable branches.
 
-- **URP** — the clones need `UniversalAdditionalCameraData`. Three **Base**
-  cameras with different `viewportRect`s, never a Base + Overlay stack: overlays
-  composite over the base camera's whole target and would fight the viewport split.
-- **Built-in** — viewport rects apply directly.
-
-The mod detects this at runtime and takes the right path either way, so this
-entry is for your understanding rather than for configuring anything.
+This is a third case the mod does not yet handle. HDRP puts per-camera state on
+`HDAdditionalCameraData`, which the clones must carry, and three HDRP cameras is a
+markedly heavier ask than three URP ones. Treat performance as unmeasured.
 
 ## `[M0.3]` The gameplay camera
 
-| | |
-|---|---|
-| GameObject name | **UNKNOWN** |
-| Scene path | **UNKNOWN** |
-| Tagged `MainCamera` | **UNKNOWN** |
-| Other cameras (mirrors / reflections / UI) | **UNKNOWN** |
+Read straight out of `Assembly-CSharp.dll` with Cecil — no launch required.
 
-Any camera with a `targetTexture` is a mirror or a reflection probe. Those render
-to a RenderTexture and are unaffected by the viewport split — but check whether
-they copy FOV from the main camera. If they do, pin their FOV or they will follow
-the centre panel's and the mirrors will go wrong.
+`CarX.BaseCamera : MonoBehaviour` is the base; the game switches between four
+concrete cameras deriving from it, each with a thin `CARX`-prefixed subclass:
+
+| Type | Update method |
+|---|---|
+| `CarX.FollowCamera` | `LateUpdate` |
+| `CarX.CockpitCamera` | `LateUpdate` |
+| `CarX.RearCamera` | `Update`, `LateUpdate` |
+| `CarX.StaticCamera` | `LateUpdate` |
+
+So there is no single controller — which is exactly why `UseRenderHook` matters.
+Leave it on; it catches whichever camera is live.
+
+**Mirrors exist:** `MirrorCameraHold.LateUpdate` writes `rotation`. Those render to
+a RenderTexture and are unaffected by the viewport split, but check they do not
+copy FOV from the main camera.
 
 → config: `MainCameraName` (leave empty to use `Camera.main`)
 
@@ -71,34 +76,22 @@ the centre panel's and the mirrors will go wrong.
 
 | | |
 |---|---|
-| Full type name | **UNKNOWN** |
-| Assembly | **UNKNOWN** |
-| Update method (`Update` / `LateUpdate` / `FixedUpdate`) | **UNKNOWN** |
-| Writes `fieldOfView` every frame? | **UNKNOWN** |
-| Writes the transform every frame? | **UNKNOWN** |
+| Full type name | **`CarX.FollowCamera`** (third-person drift view) |
+| Assembly | `Assembly-CSharp` |
+| Update method | **`LateUpdate`** |
+| Writes the transform every frame? | **Yes** — `LateUpdate` calls `set_rotation` and `set_localRotation`. The per-frame re-apply is therefore **mandatory**. |
+| Writes `fieldOfView` every frame? | **No.** Nothing writes it in gameplay — only `CameraRotation.SetFov` (event-driven) and `GarageCameraBinding` (garage only). |
 
-The last two are what the `[M0.6]` live probe measures. If the game writes FOV
-every frame — it almost certainly does — the per-frame re-apply is mandatory and
-without it the side cameras snap back to the game's defaults.
+That last row settles `DynamicFov`: leave it **Off**. There is no speed-based FOV
+ramp to preserve, so pinning the geometric FOV costs nothing.
 
-Get the exact namespace and signature right. Harmony fails half-silently on a
-wrong signature; this plugin logs loudly instead, but it still will not patch.
+```ini
+CameraControllerType   = CarX.FollowCamera
+CameraControllerMethod = LateUpdate
+```
 
-→ config: `CameraControllerType`, `CameraControllerMethod`
-
-## `[M0.5]` The HUD canvas
-
-| | |
-|---|---|
-| Canvas GameObject name(s) | **UNKNOWN** |
-| Render mode | **UNKNOWN** |
-| Layer | **UNKNOWN** |
-
-A `ScreenSpaceOverlay` canvas ignores camera viewports and stretches across all
-three panels. Confirm the minimap, tach and race prompts all land on the centre
-panel only once the fixup is on.
-
-→ config: `HudCanvasNames` (leave empty to convert every overlay canvas)
+For the cockpit view, switch the type to `CarX.CockpitCamera`. The render hook
+covers both regardless.
 
 ## `[M0.6]` Live probe
 
